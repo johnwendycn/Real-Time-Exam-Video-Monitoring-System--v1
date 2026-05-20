@@ -164,10 +164,20 @@ class MediasoupService {
     // 🚀 SCALABILITY: If the producer and consumer are on different routers/workers, pipe them!
     if (producerRouter.id !== adminRouter.id) {
       console.log(`[Mediasoup] Piping producer ${producerId} from Router ${producerRouter.id} to Admin Router ${adminRouter.id}`);
-      await producerRouter.pipeToRouter({
-        producerId: producerId,
-        router: adminRouter
-      });
+      try {
+        await producerRouter.pipeToRouter({
+          producerId: producerId,
+          router: adminRouter
+        });
+      } catch (pipeErr) {
+        // Mediasoup throws if the pipe already exists (e.g. admin re-logged in).
+        // This is safe to ignore — the existing pipe is still active and usable.
+        if (pipeErr.message && pipeErr.message.includes('already exists')) {
+          console.log(`[Mediasoup] Pipe for producer ${producerId} already exists — reusing.`);
+        } else {
+          throw pipeErr;
+        }
+      }
     }
 
     // Can we consume it on the admin router?

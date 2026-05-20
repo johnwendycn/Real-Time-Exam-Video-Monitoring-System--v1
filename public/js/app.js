@@ -351,31 +351,56 @@ function logout() {
   // Clear local tracks if candidate
   if (videoProducer) videoProducer.close();
   if (audioProducer) audioProducer.close();
-  
+
   const localVid = document.getElementById('local-video');
   if (localVid && localVid.srcObject) {
     localVid.srcObject.getTracks().forEach(track => track.stop());
   }
 
-  // Clear states
-  if (socket) socket.disconnect();
-  socket = null;
-  currentUser = null;
-  token = null;
+  // Close WebRTC transports before disconnecting so server frees mediasoup state
+  if (recvTransport) {
+    recvTransport.close();
+    recvTransport = null;
+  }
+  if (sendTransport) {
+    sendTransport.close();
+    sendTransport = null;
+  }
   device = null;
-  sendTransport = null;
-  recvTransport = null;
-  activeConsumers.clear();
-  activeUserCards.clear();
-  
-  localStorage.removeItem('vanguard_token');
 
-  // Switch UI views
-  document.getElementById('admin-view').classList.add('hidden');
-  document.getElementById('user-view').classList.add('hidden');
-  document.getElementById('auth-view').classList.remove('hidden');
+  function doDisconnect() {
+    if (socket) socket.disconnect();
+    socket = null;
+    currentUser = null;
+    token = null;
+    activeConsumers.clear();
+    activeUserCards.clear();
 
-  showToast('Logged out securely.', 'info');
+    localStorage.removeItem('vanguard_token');
+
+    // Switch UI views
+    document.getElementById('admin-view').classList.add('hidden');
+    document.getElementById('user-view').classList.add('hidden');
+    document.getElementById('auth-view').classList.remove('hidden');
+
+    showToast('Logged out securely.', 'info');
+  }
+
+  // If admin is actively monitoring a room, tell server to leave first
+  // so it can free mediasoup resources and clear currentRoomId in DB
+  if (socket && currentRoomId) {
+    socket.emit('room:leave', {}, () => {
+      currentRoomId = null;
+      doDisconnect();
+    });
+    // Safety fallback: if the server doesn't respond within 1s, proceed anyway
+    setTimeout(() => {
+      if (socket) doDisconnect();
+    }, 1000);
+  } else {
+    currentRoomId = null;
+    doDisconnect();
+  }
 }
 
 // View router
@@ -536,42 +561,46 @@ async function deleteRoom(roomId) {
 // ADMIN WEBRTC MONITORING SESSION
 // ==========================================================================
 
-// Pre-initialize Mediasoup Device and Receive Transport for the active admin monitoring session
+// Pre-initialize Mediasoup Device and Receive Transport for the active admin monitoring session.
+// Always creates a FRESH device + transport per monitoring session so re-logins start clean.
 async function setupAdminWebRtc() {
   try {
-    if (!device) {
-      console.log('[SFU Admin] Initializing Mediasoup Device...');
-      const routerRtpCapabilities = await new Promise((resolve, reject) => {
-        socket.emit('getRouterRtpCapabilities', {}, (res) => {
-          if (res.error) reject(new Error(res.error));
-          else resolve(res.rtpCapabilities);
-        });
-      });
-
-      device = new mediasoupClient.Device();
-      await device.load({ routerRtpCapabilities });
-      console.log('[SFU Admin] Mediasoup Device loaded.');
+    // Close and reset any leftover transport from a previous (or same) session
+    if (recvTransport) {
+      recvTransport.close();
+      recvTransport = null;
     }
+    device = null;
 
-    if (!recvTransport) {
-      console.log('[SFU Admin] Creating WebRTC Recv Transport...');
-      const transportParams = await new Promise((resolve, reject) => {
-        socket.emit('createWebRtcTransport', {}, (res) => {
-          if (res.error) reject(new Error(res.error));
-          else resolve(res);
-        });
+    console.log('[SFU Admin] Initializing Mediasoup Device...');
+    const routerRtpCapabilities = await new Promise((resolve, reject) => {
+      socket.emit('getRouterRtpCapabilities', {}, (res) => {
+        if (res.error) reject(new Error(res.error));
+        else resolve(res.rtpCapabilities);
       });
+    });
 
-      recvTransport = device.createRecvTransport(transportParams);
+    device = new mediasoupClient.Device();
+    await device.load({ routerRtpCapabilities });
+    console.log('[SFU Admin] Mediasoup Device loaded.');
 
-      recvTransport.on('connect', ({ dtlsParameters }, callback, errback) => {
-        socket.emit('connectWebRtcTransport', { transportId: recvTransport.id, dtlsParameters }, (res) => {
-          if (res.error) errback(res.error);
-          else callback();
-        });
+    console.log('[SFU Admin] Creating WebRTC Recv Transport...');
+    const transportParams = await new Promise((resolve, reject) => {
+      socket.emit('createWebRtcTransport', {}, (res) => {
+        if (res.error) reject(new Error(res.error));
+        else resolve(res);
       });
-      console.log('[SFU Admin] WebRTC Recv Transport created.');
-    }
+    });
+
+    recvTransport = device.createRecvTransport(transportParams);
+
+    recvTransport.on('connect', ({ dtlsParameters }, callback, errback) => {
+      socket.emit('connectWebRtcTransport', { transportId: recvTransport.id, dtlsParameters }, (res) => {
+        if (res.error) errback(res.error);
+        else callback();
+      });
+    });
+    console.log('[SFU Admin] WebRTC Recv Transport created.');
   } catch (err) {
     console.error('[SFU Admin] WebRTC Ingestion initialization failed:', err);
     throw err;

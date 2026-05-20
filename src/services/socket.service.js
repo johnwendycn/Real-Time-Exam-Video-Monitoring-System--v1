@@ -189,6 +189,8 @@ class SocketService {
           
           if (user.role === 'admin') {
             socket.leave(`room:admin:${roomId}`);
+            // Clean up admin's mediasoup transports/consumers so re-login starts fresh
+            mediasoupService.cleanupUser(user.id);
           } else {
             this.io.to(`room:admin:${roomId}`).emit('room:user-left', {
               userId: user.id,
