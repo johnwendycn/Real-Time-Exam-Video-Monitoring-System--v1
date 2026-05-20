@@ -14,7 +14,7 @@
     "express",
     "sequelize"
   ],
-  "author": "Antigravity",
+  "author": "Dr. Johnwendy",
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^2.4.3",

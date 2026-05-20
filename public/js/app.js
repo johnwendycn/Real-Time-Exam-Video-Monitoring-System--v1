@@ -618,10 +618,22 @@ async function monitorRoom(roomId, roomName) {
       });
     }
 
+    // Reset grid state NOW — before any socket events can arrive and populate it.
+    // If we cleared the grid inside initAdminMonitorSession() (which runs in the
+    // room:join ack callback), it would wipe out cards added by room:init-state
+    // which arrives and is processed BEFORE the ack callback fires.
+    document.getElementById('streams-grid').innerHTML = '';
+    document.getElementById('streams-grid').classList.add('hidden');
+    document.getElementById('streams-empty-state').classList.remove('hidden');
+    activeUserCards.clear();
+    activeConsumers.clear();
+
     // Pre-initialize Admin WebRTC Device and Transports BEFORE joining the room
     await setupAdminWebRtc();
 
-    // Register room socket listeners before joining to prevent race condition
+    // Register room socket listeners before joining to prevent race condition.
+    // room:init-state will arrive and be processed before the room:join ack callback,
+    // so listeners MUST be registered before emitting room:join.
     setupAdminSocketListeners();
 
     socket.emit('room:join', { roomId }, (res) => {
@@ -635,7 +647,8 @@ async function monitorRoom(roomId, roomName) {
         document.getElementById('current-monitored-room-name').innerText = roomName;
         document.getElementById('admin-profile-name').innerText = currentUser.username;
 
-        // Initialize monitoring layout
+        // Bind DOM events and load initial metrics/logs.
+        // NOTE: do NOT clear the grid here — room:init-state already populated it.
         initAdminMonitorSession();
       }
     });
@@ -653,10 +666,9 @@ function initAdminMonitorSession() {
   };
   document.getElementById('modal-chat-form').onsubmit = handleAdminModalChatSubmit;
 
-  // Clear stream grids
-  document.getElementById('streams-grid').innerHTML = '';
-  document.getElementById('streams-grid').classList.add('hidden');
-  document.getElementById('streams-empty-state').classList.remove('hidden');
+  // Grid was already reset in monitorRoom() before room:join was emitted,
+  // and room:init-state has already populated it by the time this callback fires.
+  // Do NOT clear it here.
 
   // Load database logs & metrics initially
   fetchMetrics();
