@@ -592,6 +592,9 @@ async function monitorRoom(roomId, roomName) {
     // Pre-initialize Admin WebRTC Device and Transports BEFORE joining the room
     await setupAdminWebRtc();
 
+    // Register room socket listeners before joining to prevent race condition
+    setupAdminSocketListeners();
+
     socket.emit('room:join', { roomId }, (res) => {
       if (res.error) {
         showToast(res.error, 'danger');
@@ -629,8 +632,11 @@ function initAdminMonitorSession() {
   // Load database logs & metrics initially
   fetchMetrics();
   fetchProctorLogs();
+}
 
-  // Setup room socket listeners
+function setupAdminSocketListeners() {
+  if (!socket) return;
+
   socket.off('room:init-state');
   socket.on('room:init-state', ({ users }) => {
     console.log('[Socket Room] Monitored room init-state loaded. Total users:', users.length);
@@ -726,6 +732,7 @@ function initAdminMonitorSession() {
 
   socket.off('chat:receive-message');
   socket.on('chat:receive-message', ({ senderId, senderUsername, messageText, timestamp, type, receiverId }) => {
+    if (senderId === currentUser.id) return;
     const isModalOpen = !document.getElementById('admin-chat-modal').classList.contains('hidden');
     if (type === 'public') {
       if (isModalOpen && activeAdminChatTab === 'public') {
@@ -783,6 +790,7 @@ function initAdminMonitorSession() {
     updateActiveStreamsCounter();
   });
 }
+
 
 async function leaveMonitoredRoom() {
   if (!confirm('Are you sure you want to stop proctoring this room and return to the lobby?')) return;
@@ -1007,6 +1015,7 @@ function initUserStreamingSession() {
 
   socket.off('chat:receive-message');
   socket.on('chat:receive-message', ({ senderId, senderUsername, messageText, timestamp, type }) => {
+    if (senderId === currentUser.id) return;
     // If the received message matches our currently active tab, append it
     if (type === activeCandidateChatTab) {
       appendChatMessage(senderId === currentUser.id ? 'outgoing' : 'incoming', senderUsername, messageText, timestamp);
