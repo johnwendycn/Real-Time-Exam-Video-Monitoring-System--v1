@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vanguard - Premium WebRTC Proctoring & Streaming</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Vanilla Custom CSS -->
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  
+  <!-- Canvas Background for animated gradients -->
+  <div class="gradient-bg">
+    <div class="g1"></div>
+    <div class="g2"></div>
+    <div class="g3"></div>
+  </div>
+
+  <!-- Main Container -->
+  <div id="app" class="app-container">
+
+    <!-- 1. Authentication View -->
+    <div id="auth-view" class="auth-card glass-panel fade-in">
+      <div class="auth-header">
+        <div class="brand">
+          <i class="fa-solid fa-eye-slash logo-icon"></i>
+          <h1>Vanguard</h1>
+        </div>
+        <p class="subtitle">Secure Live Proctoring & Streaming Platform</p>
+      </div>
+
+      <!-- Auth Selection Tabs -->
+      <div class="auth-tabs">
+        <button id="tab-login" class="tab-btn active">Sign In</button>
+        <button id="tab-register" class="tab-btn">Register</button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form" class="auth-form active">
+        <div class="input-group">
+          <label for="login-username"><i class="fa-solid fa-user"></i> Username or Email</label>
+          <input type="text" id="login-username" placeholder="Enter username or email" required>
+        </div>
+        <div class="input-group">
+          <label for="login-password"><i class="fa-solid fa-lock"></i> Password</label>
+          <input type="password" id="login-password" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="submit-btn glowing-btn">Secure Login <i class="fa-solid fa-arrow-right"></i></button>
+      </form>
+
+      <!-- Register Form -->
+      <form id="register-form" class="auth-form">
+        <div class="input-group">
+          <label for="register-username"><i class="fa-solid fa-user"></i> Username</label>
+          <input type="text" id="register-username" placeholder="Username (min 3 chars)" required>
+        </div>
+        <div class="input-group">
+          <label for="register-email"><i class="fa-solid fa-envelope"></i> Email Address</label>
+          <input type="email" id="register-email" placeholder="example@domain.com" required>
+        </div>
+        <div class="input-group">
+          <label for="register-password"><i class="fa-solid fa-lock"></i> Password</label>
+          <input type="password" id="register-password" placeholder="••••••••" required>
+        </div>
+        <div class="input-group">
+          <label for="register-role"><i class="fa-solid fa-shield-halved"></i> Role Type</label>
+          <select id="register-role">
+            <option value="user">Candidate / Streamer</option>
+            <option value="admin">Administrator / Proctor</option>
+          </select>
+        </div>
+        <button type="submit" class="submit-btn glowing-btn">Create Account <i class="fa-solid fa-circle-check"></i></button>
+      </form>
+    </div>
+
+    <!-- 2. Admin View -->
+    <div id="admin-view" class="dashboard-view hidden">
+      
+      <!-- 2a. Admin Lobby State -->
+      <div id="admin-lobby-state" class="lobby-state flex-column">
+        <!-- Navbar -->
+        <header class="dash-navbar glass-panel">
+          <div class="brand">
+            <i class="fa-solid fa-shield-halved brand-logo"></i>
+            <h2>Vanguard <span>Proctor Lobby</span></h2>
+          </div>
+          <div class="navbar-actions">
+            <div class="user-pill">
+              <span class="status-indicator online pulsing"></span>
+              <span id="admin-lobby-name">Admin</span>
+              <span class="role-badge">Proctor</span>
+            </div>
+            <button id="admin-lobby-logout-btn" class="logout-btn"><i class="fa-solid fa-power-off"></i> Logout</button>
+          </div>
+        </header>
+
+        <!-- Room Action Header -->
+        <div class="lobby-header-actions" style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; width: 100%;">
+          <h3 style="font-size: 1.4rem; font-weight: 700; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-cubes"></i> Active Proctoring Rooms</h3>
+          <button id="create-room-btn" class="submit-btn glowing-btn" style="padding: 10px 20px; font-size: 0.9rem;"><i class="fa-solid fa-plus"></i> Create Exam Room</button>
+        </div>
+
+        <!-- Room Grid -->
+        <div id="rooms-grid" class="rooms-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; width: 100%; margin-top: 20px; overflow-y: auto; flex: 1;">
+          <!-- Room cards dynamically loaded -->
+        </div>
+      </div>
+
+      <!-- 2b. Admin Active Monitor State -->
+      <div id="admin-monitor-state" class="monitor-state hidden flex-column" style="width:100%; height:100%; display:flex; flex-direction:column; gap:20px;">
+        <!-- Navbar -->
+        <header class="dash-navbar glass-panel">
+          <div class="brand">
+            <button id="admin-back-lobby-btn" class="logout-btn" style="background: rgba(99, 102, 241, 0.1); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.25);"><i class="fa-solid fa-arrow-left"></i> Leave Room</button>
+            <h2 style="margin-left: 15px; font-size: 1.5rem;">Monitoring: <span id="current-monitored-room-name" style="color: var(--accent-primary);">CS 101</span></h2>
+          </div>
+          <div class="navbar-actions">
+            <div class="user-pill">
+              <span class="status-indicator online pulsing"></span>
+              <span id="admin-profile-name">Admin</span>
+              <span class="role-badge">Proctor</span>
+            </div>
+            <button id="admin-logout-btn" class="logout-btn"><i class="fa-solid fa-power-off"></i> Logout</button>
+          </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <section class="stats-grid">
+          <div class="stat-card glass-panel border-glow">
+            <div class="stat-icon icon-blue"><i class="fa-solid fa-video"></i></div>
+            <div class="stat-info">
+              <h3>Active Streams</h3>
+              <p id="stat-active-streams">0</p>
+            </div>
+          </div>
+          <div class="stat-card glass-panel border-glow">
+            <div class="stat-icon icon-green"><i class="fa-solid fa-circle-nodes"></i></div>
+            <div class="stat-info">
+              <h3>Online Users</h3>
+              <p id="stat-online-users">0</p>
+            </div>
+          </div>
+          <div class="stat-card glass-panel border-glow">
+            <div class="stat-icon icon-purple"><i class="fa-solid fa-scroll"></i></div>
+            <div class="stat-info">
+              <h3>Audit Actions</h3>
+              <p id="stat-audit-actions">0</p>
+            </div>
+          </div>
+          <div class="stat-card glass-panel border-glow">
+            <div class="stat-icon icon-orange"><i class="fa-solid fa-microchip"></i></div>
+            <div class="stat-info">
+              <h3>System Status</h3>
+              <p class="status-success">Operational</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Dash Content Layout -->
+        <div class="dash-layout">
+          <!-- Main Streams Grid -->
+          <main class="streams-container">
+            <div class="section-title">
+              <h3><i class="fa-solid fa-display"></i> Candidate Streams</h3>
+              <span class="count-badge" id="stream-count-badge">0 Live</span>
+            </div>
+            
+            <!-- Empty State -->
+            <div id="streams-empty-state" class="empty-state glass-panel">
+              <i class="fa-solid fa-circle-exclamation empty-icon"></i>
+              <h4>No active streams in this room</h4>
+              <p>Once users enter this designated room and initiate broadcast, their feeds will show here.</p>
+            </div>
+
+            <!-- Video Grid -->
+            <div id="streams-grid" class="streams-grid hidden">
+              <!-- Dynamic stream cards inserted here -->
+            </div>
+          </main>
+
+          <!-- Right Sidebar (Logs & Auditing) -->
+          <aside class="audit-sidebar glass-panel">
+            <div class="sidebar-header">
+              <h3><i class="fa-solid fa-clipboard-list"></i> Auditing Log</h3>
+              <button id="refresh-logs-btn" class="icon-action-btn" title="Refresh logs"><i class="fa-solid fa-arrows-rotate"></i></button>
+            </div>
+            <div id="audit-log-list" class="audit-logs-list">
+              <!-- Dynamic logs inserted here -->
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. User View (Candidate Dashboard) -->
+    <div id="user-view" class="dashboard-view hidden">
+      
+      <!-- 3a. User Lobby State -->
+      <div id="user-lobby-state" class="lobby-state flex-column">
+        <!-- Navbar -->
+        <header class="dash-navbar glass-panel">
+          <div class="brand">
+            <i class="fa-solid fa-video brand-logo text-emerald"></i>
+            <h2>Vanguard <span>Candidate Lobby</span></h2>
+          </div>
+          <div class="navbar-actions">
+            <div class="user-pill">
+              <span class="status-indicator online pulsing" style="background-color: var(--accent-success);"></span>
+              <span id="user-lobby-profile-name">Candidate</span>
+              <span class="role-badge badge-green">Candidate</span>
+            </div>
+            <button id="user-lobby-logout-btn" class="logout-btn"><i class="fa-solid fa-power-off"></i> Logout</button>
+          </div>
+        </header>
+
+        <!-- Room Entry Card -->
+        <div class="auth-card glass-panel fade-in" style="margin: 60px auto 0 auto; max-width: 480px;">
+          <div class="auth-header">
+            <i class="fa-solid fa-right-to-bracket logo-icon" style="color: var(--accent-success); filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.4));"></i>
+            <h2>Enter Exam Room</h2>
+            <p class="subtitle">Select your designated proctoring room to join</p>
+          </div>
+
+          <form id="join-room-form" class="auth-form active" style="display: flex; flex-direction: column; gap: 16px;">
+            <div class="input-group">
+              <label for="join-room-select"><i class="fa-solid fa-cubes"></i> Designated Room</label>
+              <select id="join-room-select" style="width: 100%; cursor: pointer;" required>
+                <option value="" disabled selected>Select a room...</option>
+                <!-- Rooms dynamically loaded -->
+              </select>
+            </div>
+            
+            <div id="passcode-input-group" class="input-group hidden">
+              <label for="join-room-passcode"><i class="fa-solid fa-lock"></i> Room Passcode</label>
+              <input type="password" id="join-room-passcode" placeholder="Enter room passcode">
+            </div>
+
+            <button type="submit" class="submit-btn glowing-btn" style="background: var(--accent-success); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); font-weight: 700; width:100%;"><i class="fa-solid fa-circle-check"></i> Join Examination</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- 3b. User Active Streaming State -->
+      <div id="user-monitor-state" class="monitor-state hidden flex-column" style="width:100%; height:100%; display:flex; flex-direction:column; gap:20px;">
+        <!-- Navbar -->
+        <header class="dash-navbar glass-panel">
+          <div class="brand">
+            <button id="user-exit-room-btn" class="logout-btn" style="background: rgba(239, 68, 68, 0.1); color: var(--accent-danger); border: 1px solid rgba(239, 68, 68, 0.2);"><i class="fa-solid fa-arrow-left"></i> Leave Room</button>
+            <h2 style="margin-left: 15px; font-size: 1.5rem;">Proctoring: <span id="current-user-room-name" style="color: var(--accent-success);">Biology Exam 101</span></h2>
+          </div>
+          <div class="navbar-actions">
+            <div class="user-pill">
+              <span id="user-status-light" class="status-indicator offline pulsing"></span>
+              <span id="user-profile-name">Candidate</span>
+              <span class="role-badge badge-green">Candidate</span>
+            </div>
+            <button id="user-logout-btn" class="logout-btn"><i class="fa-solid fa-power-off"></i> Logout</button>
+          </div>
+        </header>
+
+        <!-- Main Layout -->
+        <div class="dash-layout user-layout-grid">
+          <!-- Left: Webcam Section -->
+          <section class="video-panel glass-panel border-glow flex-column">
+            <div class="panel-header">
+              <h3><i class="fa-solid fa-camera"></i> Secure Stream Monitor</h3>
+              <span id="stream-status-pill" class="status-pill status-pill-red">Stream Offline</span>
+            </div>
+
+            <!-- Local Video Container -->
+            <div class="video-feed-container">
+              <div id="user-blocked-overlay" class="blocked-overlay hidden">
+                <i class="fa-solid fa-ban blocked-icon"></i>
+                <h4>Stream Paused by Proctor</h4>
+                <p>Your audio and video feeds have been temporarily suspended by the administrator. Please stay on this screen.</p>
+              </div>
+              
+              <div id="local-video-placeholder" class="video-placeholder">
+                <i class="fa-solid fa-video-slash placeholder-icon"></i>
+                <p>Camera stream is inactive. Click "Initiate Broadcast" to begin.</p>
+              </div>
+              
+              <video id="local-video" class="local-video hidden" autoplay playsinline muted></video>
+            </div>
+
+            <!-- Local Media Controls -->
+            <div class="media-controls-container">
+              <button id="start-broadcast-btn" class="control-btn glowing-btn btn-emerald"><i class="fa-solid fa-circle-play"></i> Initiate Broadcast</button>
+              <button id="toggle-video-btn" class="control-btn btn-grey hidden" disabled><i class="fa-solid fa-video"></i> Stop Camera</button>
+              <button id="toggle-audio-btn" class="control-btn btn-grey hidden" disabled><i class="fa-solid fa-microphone"></i> Mute Mic</button>
+            </div>
+
+            <!-- Technical Specs Accordion -->
+            <div class="tech-specs-card">
+              <div class="spec-row"><span>WebRTC Transport:</span> <strong id="spec-transport">Unconnected</strong></div>
+              <div class="spec-row"><span>Audio Codec:</span> <strong id="spec-audio">Opus</strong></div>
+              <div class="spec-row"><span>Video Codec:</span> <strong id="spec-video">VP8</strong></div>
+            </div>
+          </section>
+
+          <!-- Right: Chat & Communications -->
+          <section class="user-sidebar glass-panel flex-column">
+            <!-- Tab Selectors for Candidate Chat -->
+            <div class="chat-tabs border-bottom" style="display: flex; background: rgba(255,255,255,0.02);">
+              <button id="candidate-tab-public" class="chat-tab-btn active" style="flex: 1; padding: 12px; font-weight: 600; border: none; background: none; color: #a5b4fc; cursor: pointer; border-bottom: 2px solid var(--accent-primary); transition: all 0.2s;"><i class="fa-solid fa-users"></i> Public Chat</button>
+              <button id="candidate-tab-private" class="chat-tab-btn" style="flex: 1; padding: 12px; font-weight: 600; border: none; background: none; color: #94a3b8; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s;"><i class="fa-solid fa-user-shield"></i> Proctor DM</button>
+            </div>
+
+            <div class="panel-header border-bottom" style="padding: 10px 15px;">
+              <h3 style="font-size: 0.9rem;" id="chat-channel-title"><i class="fa-solid fa-comments"></i> Public Room Discussion</h3>
+              <span class="status-indicator online pulsing" id="proctor-chat-indicator"></span>
+            </div>
+
+            <!-- Chat messages area -->
+            <div id="chat-messages-container" class="chat-messages-list">
+              <div class="system-message">
+                <i class="fa-solid fa-shield-halved"></i>
+                <p>Welcome to the Public Exam Room Chat. All candidates and proctors can see messages sent here.</p>
+              </div>
+            </div>
+
+            <!-- Input area -->
+            <form id="chat-input-form" class="chat-input-container">
+              <input type="text" id="chat-message-input" placeholder="Type a public message..." required autocomplete="off">
+              <button type="submit" class="chat-send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+            </form>
+          </section>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Create Room Modal (Admin Only) -->
+  <div id="create-room-modal" class="modal-overlay hidden">
+    <div class="modal-card glass-panel flex-column fade-in" style="max-width: 420px; height: auto; min-height: 280px; padding: 24px; display:flex; flex-direction:column; gap:16px;">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border-light); padding-bottom: 12px; display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="font-size:1.25rem; font-weight:700;"><i class="fa-solid fa-circle-plus"></i> Create Proctor Room</h3>
+        <button id="close-create-room-btn" class="close-modal-btn"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="create-room-form" style="display: flex; flex-direction: column; gap: 16px;">
+        <div class="input-group">
+          <label for="room-name-input"><i class="fa-solid fa-signature"></i> Room Name</label>
+          <input type="text" id="room-name-input" placeholder="e.g. CS-101 Midterm" required>
+        </div>
+        <div class="input-group">
+          <label for="room-passcode-input"><i class="fa-solid fa-key"></i> Entry Passcode (Optional)</label>
+          <input type="password" id="room-passcode-input" placeholder="Leave empty for public access">
+        </div>
+        <div class="input-group">
+          <label for="room-max-participants-input"><i class="fa-solid fa-users"></i> Max Candidates Capacity</label>
+          <input type="number" id="room-max-participants-input" placeholder="Ceiling limit (1-100)" min="1" max="100" value="10" required>
+        </div>
+        <button type="submit" class="submit-btn glowing-btn" style="margin-top: 8px;">Create Room</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Custom Popup Modal for Admin Chatting -->
+  <div id="admin-chat-modal" class="modal-overlay hidden">
+    <div class="modal-card glass-panel flex-column fade-in" style="max-width: 480px; height: 500px;">
+      <!-- Tab Selectors for Admin Chat -->
+      <div class="chat-tabs border-bottom" style="display: flex; background: rgba(255,255,255,0.02); border-top-left-radius: 12px; border-top-right-radius: 12px;">
+        <button id="admin-tab-private" class="chat-tab-btn active" style="flex: 1; padding: 12px; font-weight: 600; border: none; background: none; color: #a5b4fc; cursor: pointer; border-bottom: 2px solid var(--accent-primary); transition: all 0.2s;"><i class="fa-solid fa-user-shield"></i> Direct DM</button>
+        <button id="admin-tab-public" class="chat-tab-btn" style="flex: 1; padding: 12px; font-weight: 600; border: none; background: none; color: #94a3b8; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s;"><i class="fa-solid fa-users"></i> Public Room Chat</button>
+      </div>
+      
+      <div class="modal-header" style="padding: 12px 16px;">
+        <h3><i class="fa-solid fa-comments"></i> <span id="admin-chat-channel-title">Direct DM with Candidate</span></h3>
+        <button id="close-chat-modal" class="close-modal-btn"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      
+      <div id="modal-chat-messages" class="modal-chat-list" style="flex: 1; overflow-y: auto; padding: 16px;">
+        <!-- Messages inserted here -->
+      </div>
+      <form id="modal-chat-form" class="modal-input-container">
+        <input type="text" id="modal-chat-input" placeholder="Type direct reply..." required autocomplete="off">
+        <button type="submit" class="modal-send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Socket.io -->
+  <script src="/socket.io/socket.io.js"></script>
+  <!-- Local compiled Mediasoup Client bundle -->
+  <script src="/js/mediasoup-client.min.js"></script>
+  <!-- Frontend Javascript Orchestrator -->
+  <script src="/js/app.js"></script>
+</body>
+</html>

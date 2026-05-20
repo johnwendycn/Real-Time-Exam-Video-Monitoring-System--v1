@@ -1,0 +1,6 @@
+node_modules/
+.env
+proctoring.sqlite
+.DS_Store
+.gemini/
+*.log
